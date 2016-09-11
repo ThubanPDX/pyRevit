@@ -53,7 +53,7 @@ def get_git_dir():
 
 
 def git_get_current_branch(cloneDir):
-    global gitDir
+    global git_executive
     bfinder = re.compile('\*\s(.+)')
     output = sp.Popen(r'{0} branch'.format(git_executive), \
                       stdout=sp.PIPE, stderr=sp.PIPE, cwd=cloneDir, shell=True)
@@ -66,7 +66,7 @@ def git_get_current_branch(cloneDir):
 
 
 def git_pull_overwrite(cloneDir):
-    global gitDir
+    global git_executive
     report = ''
     r1 = r2 = False
 
@@ -96,7 +96,7 @@ installDir = get_install_dir()
 pyrevitCloneDir = get_pyrevit_clone_dir()
 loaderCloneDir = get_loader_clone_dir()
 gitDir = get_git_dir()
-git_executive = '"' + op.join(gitDir, 'git.exe') + '"'
+git_executive = '\"' + op.join(gitDir, 'git.exe') + '\"'
 
 print('Installation directory is: {0}'.format(installDir))
 print('Portable git package is located at: {0}'.format(gitDir))
