@@ -41,3 +41,7 @@ Z:\Revit API\revitpythonloader\RevitPythonLoader\obj\Release\RevitPythonLoader.S
 Z:\Revit API\revitpythonloader\RevitPythonLoader\obj\Release\revitPythonLoader.csproj.GenerateResource.Cache
 Z:\Revit API\revitpythonloader\RevitPythonLoader\obj\Release\RevitPythonLoader.dll
 Z:\Revit API\revitpythonloader\RevitPythonLoader\obj\Release\RevitPythonLoader.pdb
+Y:\pyRevit\RevitPythonLoader\obj\Release\revitPythonLoader.csprojResolveAssemblyReference.cache
+Y:\pyRevit\RevitPythonLoader\obj\Release\RevitPythonLoader.Properties.Resources.resources
+Y:\pyRevit\RevitPythonLoader\obj\Release\RevitPythonLoader.ScriptOutput.resources
+Y:\pyRevit\RevitPythonLoader\obj\Release\revitPythonLoader.csproj.GenerateResource.Cache
