@@ -29,9 +29,12 @@ import os.path as op
 import pickle
 from collections import namedtuple
 
-from Autodesk.Revit.DB import ElementId, View3D, TransactionGroup, Transaction, Viewport, ViewSheet, ViewPlan, \
-                              ViewDrafting, XYZ
+from Autodesk.Revit.DB import ElementId, TransactionGroup, Transaction, Viewport, ViewSheet, ViewPlan,          \
+                              ViewDrafting, BoundingBoxXYZ, XYZ, View3D, ViewOrientation3D, BuiltInParameter,   \
+                              FilteredElementCollector
 from Autodesk.Revit.UI import TaskDialog
+
+from System.Collections.Generic import List
 
 uidoc = __revit__.ActiveUIDocument
 doc = __revit__.ActiveUIDocument.Document
@@ -234,47 +237,92 @@ elif selected_switch == 'Viewport Placement on Sheet':
                 transmatrix.sourcemax.Y - transmatrix.sourcemin.Y))
         return XYZ(newx, newy, 0.0)
 
-
     def set_tansform_matrix(selvp, selview):
         # making sure the cropbox is active.
         cboxactive = selview.CropBoxActive
         cboxvisible = selview.CropBoxVisible
-        with Transaction(doc, 'Activate and Read Cropbox Boundary') as t:
-            t.Start()
-            selview.CropBoxActive = True
-            selview.CropBoxVisible = False
-
-            # get view min max points in modelUCS.
-            modelucsx = []
-            modelucsy = []
-            crsm = selview.GetCropRegionShapeManager()
-            cl = crsm.GetCropShape()[0]
-            for l in cl:
-                modelucsx.append(l.GetEndPoint(0).X)
-                modelucsy.append(l.GetEndPoint(0).Y)
-            cropmin = XYZ(min(modelucsx), min(modelucsy), 0.0)
-            cropmax = XYZ(max(modelucsx), max(modelucsy), 0.0)
-            
-            # get vp min max points in sheetUCS
-            ol = selvp.GetBoxOutline()
-            vptempmin = ol.MinimumPoint
-            vpmin = XYZ(vptempmin.X + vpboundaryoffset, vptempmin.Y + vpboundaryoffset, 0.0)
-            vptempmax = ol.MaximumPoint
-            vpmax = XYZ(vptempmax.X - vpboundaryoffset, vptempmax.Y - vpboundaryoffset, 0.0)
-
-            transmatrix.sourcemin = vpmin
-            transmatrix.sourcemax = vpmax
-            transmatrix.destmin = cropmin
-            transmatrix.destmax = cropmax
-
-            revtransmatrix.sourcemin = cropmin
-            revtransmatrix.sourcemax = cropmax
-            revtransmatrix.destmin = vpmin
-            revtransmatrix.destmax = vpmax
+        cboxannoparam = selview.get_Parameter(BuiltInParameter.VIEWER_ANNOTATION_CROP_ACTIVE)
+        cboxannostate = cboxannoparam.AsInteger()
+        curviewelements = FilteredElementCollector(doc).OwnedByView(selview.Id).WhereElementIsNotElementType().ToElements()
+        viewspecificelements = []
+        for el in curviewelements:
+            if el.ViewSpecific                   \
+                and (not el.IsHidden(selview))   \
+                and el.CanBeHidden               \
+                and el.Category != None          \
+                and 'Sun Path' not in str(el.Category.Name):
+                viewspecificelements.append(el.Id)
         
-            selview.CropBoxActive = cboxactive
-            selview.CropBoxVisible = cboxvisible
-            t.Commit()
+        with TransactionGroup(doc, 'Activate and Read Cropbox Boundary') as tg:
+            tg.Start()
+            with Transaction(doc, 'Hiding all 2d elements') as t:
+                t.Start()
+                if viewspecificelements:
+                    selview.HideElements(List[ElementId](viewspecificelements))
+                t.Commit()
+                
+            with Transaction(doc, 'Activate and Read Cropbox Boundary') as t:
+                t.Start()
+                selview.CropBoxActive = True
+                selview.CropBoxVisible = False
+                cboxannoparam.Set(0)
+                
+                # if viewspecificelements:
+                    # selview.HideElements(List[ElementId](viewspecificelements))
+                
+                # left_annooffset = crsm.LeftAnnotationCropOffset
+                # right_annooffset = crsm.RightAnnotationCropOffset
+                # top_annooffset = crsm.TopAnnotationCropOffset
+                # bottom_annooffset = crsm.BottomAnnotationCropOffset
+                # crsm.LeftAnnotationCropOffset = 0
+                # crsm.RightAnnotationCropOffset = 0
+                # crsm.TopAnnotationCropOffset = 0
+                # crsm.BottomAnnotationCropOffset = 0
+                
+                # get view min max points in modelUCS.
+                modelucsx = []
+                modelucsy = []
+                crsm = selview.GetCropRegionShapeManager()
+                
+                cllist = crsm.GetCropShape()
+                if len(cllist) == 1:
+                    cl = cllist[0]
+                    for l in cl:
+                        modelucsx.append(l.GetEndPoint(0).X)
+                        modelucsy.append(l.GetEndPoint(0).Y)
+                    cropmin = XYZ(min(modelucsx), min(modelucsy), 0.0)
+                    cropmax = XYZ(max(modelucsx), max(modelucsy), 0.0)
+                    
+                    # get vp min max points in sheetUCS
+                    ol = selvp.GetBoxOutline()
+                    vptempmin = ol.MinimumPoint
+                    vpmin = XYZ(vptempmin.X + vpboundaryoffset, vptempmin.Y + vpboundaryoffset, 0.0)
+                    vptempmax = ol.MaximumPoint
+                    vpmax = XYZ(vptempmax.X - vpboundaryoffset, vptempmax.Y - vpboundaryoffset, 0.0)
+
+                    transmatrix.sourcemin = vpmin
+                    transmatrix.sourcemax = vpmax
+                    transmatrix.destmin = cropmin
+                    transmatrix.destmax = cropmax
+
+                    revtransmatrix.sourcemin = cropmin
+                    revtransmatrix.sourcemax = cropmax
+                    revtransmatrix.destmin = vpmin
+                    revtransmatrix.destmax = vpmax
+                
+                    selview.CropBoxActive = cboxactive
+                    selview.CropBoxVisible = cboxvisible
+                    cboxannoparam.Set(cboxannostate)
+                    
+                    if viewspecificelements:
+                        selview.UnhideElements(List[ElementId](viewspecificelements))
+
+                    # crsm.LeftAnnotationCropOffset = left_annooffset
+                    # crsm.RightAnnotationCropOffset = right_annooffset
+                    # crsm.TopAnnotationCropOffset = top_annooffset
+                    # crsm.BottomAnnotationCropOffset = bottom_annooffset
+                t.Commit()
+            tg.Assimilate()
 
     datafile = usertemp + '\\' + prjname + '_pySaveViewportLocation.pym'
 
