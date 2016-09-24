@@ -106,7 +106,10 @@ if op.exists('{0}\git.exe'.format(gitDir)):
         print('\nUPDATING PYTHON LOADER '.ljust(100, '-'))
         print('pyRevit loader has been cloned to: {0}\n'.format(loaderCloneDir))
         git_pull_overwrite(loaderCloneDir)
-
+    except:
+        print('Error Updating loader repository...The cloned repo might be corrupt or no internet access.\n'      \
+              'Trying to update the main repository now')
+    try:
         print('\n\nUPDATING PYTHON SCRIPT LIBRARY '.ljust(100, '-'))
         print('pyRevit has been cloned to: {0}\n'.format(pyrevitCloneDir))
         git_pull_overwrite(pyrevitCloneDir)
