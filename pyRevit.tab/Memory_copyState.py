@@ -246,11 +246,10 @@ elif selected_switch == 'Viewport Placement on Sheet':
         curviewelements = FilteredElementCollector(doc).OwnedByView(selview.Id).WhereElementIsNotElementType().ToElements()
         viewspecificelements = []
         for el in curviewelements:
-            if el.ViewSpecific                   \
+            if  el.ViewSpecific                   \
                 and (not el.IsHidden(selview))   \
                 and el.CanBeHidden               \
-                and el.Category != None          \
-                and 'Sun Path' not in str(el.Category.Name):
+                and el.Category != None:
                 viewspecificelements.append(el.Id)
         
         with TransactionGroup(doc, 'Activate and Read Cropbox Boundary') as tg:
@@ -258,7 +257,11 @@ elif selected_switch == 'Viewport Placement on Sheet':
             with Transaction(doc, 'Hiding all 2d elements') as t:
                 t.Start()
                 if viewspecificelements:
-                    selview.HideElements(List[ElementId](viewspecificelements))
+                    for elid in viewspecificelements:
+                        try:
+                            selview.HideElements(List[ElementId](elid))
+                        except:
+                            pass
                 t.Commit()
                 
             with Transaction(doc, 'Activate and Read Cropbox Boundary') as t:
@@ -266,19 +269,7 @@ elif selected_switch == 'Viewport Placement on Sheet':
                 selview.CropBoxActive = True
                 selview.CropBoxVisible = False
                 cboxannoparam.Set(0)
-                
-                # if viewspecificelements:
-                    # selview.HideElements(List[ElementId](viewspecificelements))
-                
-                # left_annooffset = crsm.LeftAnnotationCropOffset
-                # right_annooffset = crsm.RightAnnotationCropOffset
-                # top_annooffset = crsm.TopAnnotationCropOffset
-                # bottom_annooffset = crsm.BottomAnnotationCropOffset
-                # crsm.LeftAnnotationCropOffset = 0
-                # crsm.RightAnnotationCropOffset = 0
-                # crsm.TopAnnotationCropOffset = 0
-                # crsm.BottomAnnotationCropOffset = 0
-                
+                                
                 # get view min max points in modelUCS.
                 modelucsx = []
                 modelucsy = []
@@ -317,10 +308,6 @@ elif selected_switch == 'Viewport Placement on Sheet':
                     if viewspecificelements:
                         selview.UnhideElements(List[ElementId](viewspecificelements))
 
-                    # crsm.LeftAnnotationCropOffset = left_annooffset
-                    # crsm.RightAnnotationCropOffset = right_annooffset
-                    # crsm.TopAnnotationCropOffset = top_annooffset
-                    # crsm.BottomAnnotationCropOffset = bottom_annooffset
                 t.Commit()
             tg.Assimilate()
 
