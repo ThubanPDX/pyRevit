@@ -42,6 +42,24 @@ verbose = None
 initsectionname = 'init'
 globalsectionname = 'global'
 
+ADDIN_DLL_NAME = "RevitPythonLoader"
+ADDIN_CLASSNAME = "RevitPythonLoaderApplication"
+ADDIN_GUID = "7E37F14E-D840-42F8-8CA6-90FFC5497972"
+ADDIN_DEF_FILENAME = 'pyRevit.addin'
+ADDIN_VENDORID = 'eirannejad'
+
+addinfilecontents =                                                                         \
+'<?xml version="1.0" encoding="utf-8" standalone="no"?>\n'                                  \
+ '<RevitAddIns>\n'                                                                          \
+ '  <AddIn Type="Application">\n'                                                           \
+ '    <Name>{addinname}</Name>\n'                                                           \
+ '    <Assembly>{addinfolder}\\{addinname}.dll</Assembly>\n'                                \
+ '    <AddInId>{addinguid}</AddInId>\n'                                                     \
+ '    <FullClassName>{addinname}.{addinclassname}</FullClassName>\n'                             \
+ '  <VendorId>{addinvendorid}</VendorId>\n'                                                      \
+ '  </AddIn>\n'                                                                             \
+ '</RevitAddIns>\n'
+
 
 class ErrorWritingUserSettings(Exception):
     pass
@@ -69,6 +87,7 @@ class settingsWindow:
         self.my_window.Width = 400
         self.my_window.Height = 400
         self.my_window.ResizeMode = System.Windows.ResizeMode.CanMinimize
+        self.my_window.SizeToContent = System.Windows.SizeToContent.Height
         self.my_window.WindowStartupLocation = System.Windows.WindowStartupLocation.CenterScreen
 
         # Create StackPanel to Layout UI elements
@@ -108,19 +127,37 @@ class settingsWindow:
         self.my_stack.Children.Add(label)
         self.my_stack.Children.Add(self.my_textbox_archivelogfolder)
 
+        label = System.Windows.Controls.Label()
+        label.Content = 'Activate pyRevit for:\n'                           \
+                        '(Restart Revit for this change to take effect)'
+        label.Margin = System.Windows.Thickness(30, 15, 30, 0)
+        self.my_stack.Children.Add(label)
+        
+        self.rvtCheckboxes = {}
+        revitversionspanel = System.Windows.Controls.WrapPanel()
+        revitversionspanel.Margin = System.Windows.Thickness(30, 0, 30, 15)
+        self.my_stack.Children.Add(revitversionspanel)
+        for rvtversion in get_installed_revit_versions():
+            if rvtversion.isdigit():
+                self.revitVersionCheckbox = System.Windows.Controls.CheckBox()
+                self.revitVersionCheckbox.Content = 'Revit {}'.format(rvtversion)
+                self.revitVersionCheckbox.Margin = System.Windows.Thickness(0, 0, 10, 0)
+                if addin_def_exists(rvtversion):
+                    self.revitVersionCheckbox.IsChecked = True
+                self.rvtCheckboxes[rvtversion] = self.revitVersionCheckbox
+                revitversionspanel.Children.Add(self.revitVersionCheckbox)
+
         self.my_button_savesettings = System.Windows.Controls.Button()
         self.my_button_savesettings.Content = 'Save User Settings & Close'
-        self.my_button_savesettings.Margin = System.Windows.Thickness(30, 40, 30, 0)
+        self.my_button_savesettings.Margin = System.Windows.Thickness(30, 10, 10, 30)
         self.my_button_savesettings.Click += self.savesettings
         self.my_stack.Children.Add(self.my_button_savesettings)
-
 
     def togglearchivefoldertextbox(self, sender, args):
         if self.logScriptUsageCheckBox.IsChecked:
             self.my_textbox_archivelogfolder.IsEnabled = True
         else:
             self.my_textbox_archivelogfolder.IsEnabled = False
-
 
     def savesettings(self, sender, args):
         global logScriptUsage
@@ -131,6 +168,12 @@ class settingsWindow:
         logScriptUsage = self.logScriptUsageCheckBox.IsChecked
         archivelogfolder = self.my_textbox_archivelogfolder.Text
         
+        checkedversions = []
+        for revitversion, checkbox in self.rvtCheckboxes.items():
+            if checkbox.IsChecked:
+                checkedversions.append(revitversion)
+        toggle_addin_for(checkedversions)
+        
         save_user_settings()
         self.my_window.Close()
 
@@ -138,7 +181,68 @@ class settingsWindow:
         self.my_window.ShowDialog()
 
 
+def get_parent_directory(path):
+    return op.dirname(path)
 
+
+def get_install_dir():
+    return get_parent_directory(get_parent_directory(get_parent_directory(__file__)))
+
+
+def get_loader_clone_dir():
+    return op.join(get_install_dir(), '__init__')
+
+
+def find_revit_addin_directory():
+    userappdatafolder = os.getenv('appdata')
+    return op.join(userappdatafolder, "Autodesk", "Revit", "Addins")
+
+
+def get_installed_revit_versions():
+    revitaddinfolder = find_revit_addin_directory()
+    return os.listdir(revitaddinfolder)
+
+
+def addin_def_exists(revitversion):
+    global ADDIN_DLL_NAME
+    revitaddinfolder = find_revit_addin_directory()
+    for fname in os.listdir(op.join(revitaddinfolder, revitversion)):
+        if op.splitext(fname)[1].lower() == '.addin':
+            fullfname = op.join(revitaddinfolder, revitversion, fname)
+            with open(fullfname, 'r') as f:
+                for line in f.readlines():
+                    if (ADDIN_DLL_NAME + '.dll').lower() in line.lower():
+                        return fullfname
+    return False
+
+
+def toggle_addin_for(revitversions):
+    global ADDIN_DLL_NAME
+    global ADDIN_CLASSNAME
+    global ADDIN_GUID
+    global ADDIN_DEF_FILENAME
+    global ADDIN_VENDORID
+
+    revitaddinfolder = find_revit_addin_directory()
+    for revitversion in get_installed_revit_versions():
+        if revitversion in revitversions:
+            if addin_def_exists(revitversion):
+                pass
+            else:
+                addin_definition_file = op.join(op.join(revitaddinfolder, revitversion, ADDIN_DEF_FILENAME))
+                with open(addin_definition_file, 'w') as f:
+                    f.writelines(addinfilecontents.format( addinname = ADDIN_DLL_NAME,               \
+                                                           addinfolder = get_loader_clone_dir(),     \
+                                                           addinguid = ADDIN_GUID,                   \
+                                                           addinvendorid = ADDIN_VENDORID,           \
+                                                           addinclassname = ADDIN_CLASSNAME))
+        else:
+            addinfile = addin_def_exists(revitversion)
+            if addinfile:
+                os.remove(addinfile)
+
+
+#user config file functions
 def find_user_configfile():
     # find the user config file
     userappdatafolder = os.getenv('appdata')
