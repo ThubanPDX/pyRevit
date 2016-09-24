@@ -90,6 +90,8 @@ def git_pull_overwrite(cloneDir):
 
     if (r1 == r2 == 0):
         print('Successfully updated repository...')
+    else:
+        print('Error in updating repository...')
 
 
 installDir = get_install_dir()
