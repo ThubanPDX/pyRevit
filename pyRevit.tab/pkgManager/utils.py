@@ -153,7 +153,7 @@ def get_local_pkg_ref(package_name):
     if not failed:
         ref = out
         logger.info('Local ref is: {}'.format(ref))
-        return ref.strip()[:5]
+        return ref.strip()[:7]
 
 
 def get_remote_pkg_ref(url):
@@ -168,7 +168,7 @@ def get_remote_pkg_ref(url):
     if not failed:
         ref = out.split()[0]
         logger.debug('Remote ref is: {}'.format(ref))
-        return ref.strip()[:5]
+        return ref.strip()[:7]
 
 
 def clone_pkg_from_remote(package_name, package_url):
