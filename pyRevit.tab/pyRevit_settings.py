@@ -33,7 +33,7 @@ clr.AddReferenceByPartialName('System.Windows.Forms')
 clr.AddReferenceByPartialName('System.Data')
 import System.Windows
 
-from Autodesk.Revit.UI import TaskDialog
+from Autodesk.Revit.UI import TaskDialog, TaskDialogCommonButtons, TaskDialogResult
 
 logScriptUsage = None
 archivelogfolder = None
@@ -172,7 +172,19 @@ class settingsWindow:
         for revitversion, checkbox in self.rvtCheckboxes.items():
             if checkbox.IsChecked:
                 checkedversions.append(revitversion)
-        toggle_addin_for(checkedversions)
+        if len(checkedversions) == 0:
+            res = TaskDialog.Show('pyRevit', 'You are disabling pyRevit for all Revit versions. If you make this '     \
+                                             'change, pyRevit will not load under any Revit version and later you '    \
+                                             'have to manually re-activate it. Are you sure?',
+                                   TaskDialogCommonButtons.Yes | TaskDialogCommonButtons.Cancel)
+            if res == TaskDialogResult.Yes:
+                TaskDialog.Show('pyRevit', 'Okay. To activate pyRevit later, go under the installation folder and ' \
+                                           'run "makeAddins.bat" file. This will recreate the addin files for '     \
+                                           'installed Revit versions.',
+                                TaskDialogCommonButtons.Ok)
+                toggle_addin_for(checkedversions)
+        else:
+            toggle_addin_for(checkedversions)
         
         save_user_settings()
         self.my_window.Close()
