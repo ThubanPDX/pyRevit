@@ -170,14 +170,21 @@ class PyRevitUISettings:
         # find the user config file
         userappdatafolder = os.getenv('appdata')
         pyrevituserappdatafolder = op.join(userappdatafolder, "pyRevit")
-        configfile = op.join(pyrevituserappdatafolder, "userdefaults.ini")
-        configfileismaster = False
+        userconfigfile = op.join(pyrevituserappdatafolder, "userdefaults.ini")
+        masterconfigfile = op.join(find_loader_directory(), self.pyRevitInitScriptName + ".ini")
+        configfileisuser = False
+        
+        # if a user config file exits, this would be used instead of master.
+        if op.exists(userconfigfile):
+            configfile = userconfigfile
+            configfileisuser = True
+        else:
+            configfile = masterconfigfile
 
-        # if a config file exits along side the script loader, this would be used instead.
-        if op.exists(op.join(find_loader_directory(), self.pyRevitInitScriptName + ".ini")):
-            configfile = op.join(find_loader_directory(), self.pyRevitInitScriptName + ".ini")
-            configfileismaster = True
-
+        if configfileisuser:
+            report('Reading settings from user config file...')
+        else:
+            report('Reading settings from master config file...')
         # if the config file exists then read values and apply
         if op.exists(configfile):        # read file and reapply settings
             try:
@@ -190,11 +197,11 @@ class PyRevitUISettings:
                     verbose = True if cparser.get(globalsectionname, "verbose").lower() == "true" else False
             except:
                 reportv("Can not access existing config file. Skipping saving config file.")
-        # else if the config file is not master config then create a user config and fill with default
-        elif not configfileismaster:
+        # else if the config file is not readable then create a user config and fill with default
+        else:
             if self.verify_config_folder(pyrevituserappdatafolder):
                 try:
-                    with open(configfile,'w') as udfile:
+                    with open(userconfigfile,'w') as udfile:
                         cparser = settingsParser.ConfigParser()
                         cparser.add_section(globalsectionname)
                         cparser.set(globalsectionname, "verbose", "true" if verbose else "false")
@@ -481,7 +488,6 @@ class ScriptCommand:
 
 class PyRevitUISession:
     def __init__(self):
-        report('Running on:\n{0}'.format(sys.version))
         self.loadedPyRevitScripts = []
         self.loadedPyRevitAssemblies = []
         self.pyRevitScriptPanels = []
@@ -1063,6 +1069,7 @@ __window__.Width = 1100
 # __window__.Close()
 # find pyRevit home directory and initialize current session
 t = Timer()
+report('Running on:\n{0}'.format(sys.version))
 sessionSettings = PyRevitUISettings()
 session = PyRevitUISession()
 report('Load time: {}'.format(t.get_time_hhmmss()))
