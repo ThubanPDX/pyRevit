@@ -71,6 +71,11 @@ namespace RevitPythonLoader
                 scope.SetVariable("__window__", scriptOutput);
                 scope.SetVariable("__file__", sourcePath);
 
+                //Add script directory address to sys search paths
+                var path = engine.GetSearchPaths();
+                path.Add(System.IO.Path.GetDirectoryName(sourcePath));
+                engine.SetSearchPaths(path);
+
                 engine.Runtime.IO.SetOutput(outputStream, Encoding.UTF8);
                 engine.Runtime.IO.SetErrorOutput(outputStream, Encoding.UTF8);
                 engine.Runtime.IO.SetInput(outputStream, Encoding.UTF8);
@@ -171,6 +176,7 @@ namespace RevitPythonLoader
 
             // also, allow access to the RPL internals
             engine.Runtime.LoadAssembly(typeof(RevitPythonLoader.ScriptExecutor).Assembly);
+
         }        
 
         /// <summary>
