@@ -27,26 +27,29 @@ uidoc = __revit__.ActiveUIDocument
 doc = __revit__.ActiveUIDocument.Document
 
 location = doc.PathName
-try:
-    modelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(location)
-    transData = TransmissionData.ReadTransmissionData(modelPath)
-    externalReferences = transData.GetAllExternalFileReferenceIds()
-    for refId in externalReferences:
-        extRef = transData.GetLastSavedReferenceData(refId)
-        path = ModelPathUtils.ConvertModelPathToUserVisiblePath(extRef.GetPath())
-        if extRef.ExternalFileReferenceType == ExternalFileReferenceType.KeynoteTable and '' != path:
-            ktable = doc.GetElement(extRef.GetReferencingId())
-            editedByParam = ktable.Parameter[BuiltInParameter.EDITED_BY]
-            if editedByParam and editedByParam.AsString() != '':
-                TaskDialog.Show('pyRevit', 'Keynote table has been reloaded by:\n{0}\nTable Id is: {1}'.format(
-                    editedByParam.AsString(), ktable.Id))
-            else:
-                TaskDialog.Show('pyRevit',
-                                'No one own the keynote table. You can make changes and reload.\n'
-                                'Table Id is: {0}'.format(ktable.Id))
-except Exception as e:
-    __window__.Show()
-    print('Model is not saved yet. Can not aquire keynote file location.')
-    print(e)
+if doc.IsWorkshared:
+    try:
+        modelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(location)
+        transData = TransmissionData.ReadTransmissionData(modelPath)
+        externalReferences = transData.GetAllExternalFileReferenceIds()
+        for refId in externalReferences:
+            extRef = transData.GetLastSavedReferenceData(refId)
+            path = ModelPathUtils.ConvertModelPathToUserVisiblePath(extRef.GetPath())
+            if extRef.ExternalFileReferenceType == ExternalFileReferenceType.KeynoteTable and '' != path:
+                ktable = doc.GetElement(extRef.GetReferencingId())
+                editedByParam = ktable.Parameter[BuiltInParameter.EDITED_BY]
+                if editedByParam and editedByParam.AsString() != '':
+                    TaskDialog.Show('pyRevit', 'Keynote table has been reloaded by:\n{0}\nTable Id is: {1}'.format(
+                        editedByParam.AsString(), ktable.Id))
+                else:
+                    TaskDialog.Show('pyRevit',
+                                    'No one own the keynote table. You can make changes and reload.\n'
+                                    'Table Id is: {0}'.format(ktable.Id))
+    except Exception as e:
+        __window__.Show()
+        print('Model is not saved yet. Can not aquire keynote file location.')
+        print(e)
+else:
+    TaskDialog.Show('pyRevit', 'Model is not workshared.')
 
 __window__.Close()
