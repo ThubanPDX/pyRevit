@@ -56,7 +56,7 @@ namespace RevitPythonLoader
         /// <summary>
         /// Run the script and print the output to a new output window.
         /// </summary>
-        public int ExecuteScript(string source, string sourcePath)
+        public int ExecuteScript(string source, string sourcePath, string syspaths = "")
         {
             try
             {
@@ -71,9 +71,23 @@ namespace RevitPythonLoader
                 scope.SetVariable("__window__", scriptOutput);
                 scope.SetVariable("__file__", sourcePath);
 
-                //Add script directory address to sys search paths
+                //get the sys.path object and get ready to add more search paths
                 var path = engine.GetSearchPaths();
-                path.Add(System.IO.Path.GetDirectoryName(sourcePath));
+
+                if (syspaths == "") {
+                    // if syspath is empty it means that the ScriptExecuter is not being called by the CommandLoaderBaseExtended
+                    // So if the syspath is empty lets set it to sourcePath so at least the source script path is added to sys.path
+                    syspaths = sourcePath;
+                }
+  
+                //syspath is a long string of paths separated by ;
+                //lets split syspath and add each one to sys.path
+                foreach (string searchpath in syspaths.Split(';'))
+                {
+                    path.Add(System.IO.Path.GetDirectoryName(searchpath));
+                }
+
+                //no update the search paths with new list
                 engine.SetSearchPaths(path);
 
                 engine.Runtime.IO.SetOutput(outputStream, Encoding.UTF8);

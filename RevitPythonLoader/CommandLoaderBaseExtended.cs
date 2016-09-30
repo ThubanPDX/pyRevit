@@ -4,6 +4,7 @@ using Autodesk.Revit;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.Attributes;
+using System.Collections.Generic;
 
 namespace RevitPythonLoader
 {
@@ -16,15 +17,17 @@ namespace RevitPythonLoader
     /// </summary>
     [Regeneration(RegenerationOption.Manual)]
     [Transaction(TransactionMode.Manual)]
-    public abstract class CommandLoaderBaseWithLogger : IExternalCommand
+    public abstract class CommandLoaderBaseExtended : IExternalCommand
     {
         protected string _scriptSource = "";
         protected string _logfilename = "";
+        protected string _syspaths;
 
-        public CommandLoaderBaseWithLogger(string scriptSource, string logfilename)
+        public CommandLoaderBaseExtended(string scriptSource, string logfilename, string syspaths)
         {
             _scriptSource = scriptSource;
             _logfilename = logfilename;
+            _syspaths = syspaths;
         }
 
         /// <summary>
@@ -41,7 +44,7 @@ namespace RevitPythonLoader
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             // FIXME: somehow fetch back message after script execution...
-            var executor = new ScriptExecutor( commandData, message, elements );
+            var executor = new ScriptExecutor( commandData, message, elements);
 
             string source;
             using (var reader = File.OpenText(_scriptSource))
@@ -49,14 +52,18 @@ namespace RevitPythonLoader
                 source = reader.ReadToEnd();
             }
 
-            var result = executor.ExecuteScript(source, _scriptSource);
+            var result = executor.ExecuteScript(source, _scriptSource, _syspaths);
             message = executor.Message;
-            string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-            string username = commandData.Application.Application.Username;
-            string rvtversion = commandData.Application.Application.VersionNumber;
+
+            //Logger: Log filename will be set by the loader when creating classes for each script. That's the _logfilename.
+            //This step will record a log entry for each script execution.
+            string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");        //log time stamp
+            string username = commandData.Application.Application.Username;         //log username
+            string rvtversion = commandData.Application.Application.VersionNumber;  //log Revit version
             string temppath = Path.Combine(Path.GetTempPath(), _logfilename);
             using (var logger = File.AppendText(temppath))
             {
+                //This is the log entry in CSV format: {timestamp}, {username}, {revit version}, {full script address}
                 logger.WriteLine(String.Format("{0}, {1}, {2}, {3}", timestamp, username, rvtversion, _scriptSource));
             }
 
