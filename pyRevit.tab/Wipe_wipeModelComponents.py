@@ -546,7 +546,8 @@ def removeAllElevationMarkers():
     for em in elevMarkers:
         try:
             # report('ID: {0}'.format( em.Id ))
-            doc.Delete(em.Id)
+            if em.CurrentViewCount == 0:
+                doc.Delete(em.Id)
         except Exception as e:
             reportAndPrintError('Elevation Marker', em.Id, e)
             continue
